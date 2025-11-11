@@ -30,6 +30,7 @@ get '/' do
   @today_entry = db.execute("SELECT * FROM days WHERE date = ? ORDER BY id DESC LIMIT 1", [@today]).first
   @recent_days = db.execute("SELECT * FROM days ORDER BY date DESC LIMIT 30")
   @day_type_stats = db.execute("SELECT day_type, COUNT(*) as count FROM days GROUP BY day_type ORDER BY count DESC LIMIT 10")
+  @edit_mode = params[:edit] == 'true'
   erb :index
 end
 
@@ -110,53 +111,85 @@ __END__
     <p class="text-lg text-amber-700 italic">What kind of day is today?</p>
   </div>
 
-  <!-- Today's Entry Form -->
-  <div class="bg-white rounded-lg shadow-md p-8 mb-8 border border-amber-200">
-    <form method="POST" action="/day" class="space-y-6">
-      <input type="hidden" name="date" value="<%= @today %>">
-
-      <div>
-        <label class="block text-sm font-semibold text-amber-900 mb-2">
+  <!-- Today's Entry -->
+  <% if @today_entry && !@edit_mode %>
+    <!-- Display Card -->
+    <div class="bg-white rounded-lg shadow-md p-8 mb-8 border border-amber-200">
+      <div class="flex justify-between items-start mb-6">
+        <div class="text-sm font-semibold text-amber-900">
           Today is <%= Date.today.strftime('%B %d, %Y') %>
-        </label>
+        </div>
+        <a href="/?edit=true" class="text-amber-600 hover:text-amber-700 text-sm font-semibold transition-colors">
+          Edit
+        </a>
       </div>
 
-      <div>
-        <label for="day_type" class="block text-lg text-amber-800 mb-2">
+      <div class="mb-6">
+        <div class="text-amber-700 text-lg mb-2">
           This is a <span class="italic">day of...</span>
-        </label>
-        <input
-          type="text"
-          id="day_type"
-          name="day_type"
-          value="<%= @today_entry ? @today_entry['day_type'] : '' %>"
-          placeholder="Mending, Making, Exploring..."
-          class="w-full px-4 py-3 text-xl italic border-2 border-amber-300 rounded-lg focus:outline-none focus:border-amber-500 bg-amber-50/30"
-          required
+        </div>
+        <div class="text-4xl day-type text-amber-900 font-semibold">
+          <%= @today_entry['day_type'] %>
+        </div>
+      </div>
+
+      <% if @today_entry['notes'] && !@today_entry['notes'].empty? %>
+      <div class="border-t border-amber-100 pt-6">
+        <div class="text-amber-800 leading-relaxed">
+          <%= @today_entry['notes'] %>
+        </div>
+      </div>
+      <% end %>
+    </div>
+  <% else %>
+    <!-- Entry Form -->
+    <div class="bg-white rounded-lg shadow-md p-8 mb-8 border border-amber-200">
+      <form method="POST" action="/day" class="space-y-6">
+        <input type="hidden" name="date" value="<%= @today %>">
+
+        <div>
+          <label class="block text-sm font-semibold text-amber-900 mb-2">
+            Today is <%= Date.today.strftime('%B %d, %Y') %>
+          </label>
+        </div>
+
+        <div>
+          <label for="day_type" class="block text-lg text-amber-800 mb-2">
+            This is a <span class="italic">day of...</span>
+          </label>
+          <input
+            type="text"
+            id="day_type"
+            name="day_type"
+            value="<%= @today_entry ? @today_entry['day_type'] : '' %>"
+            placeholder="Mending, Making, Exploring..."
+            class="w-full px-4 py-3 text-xl italic border-2 border-amber-300 rounded-lg focus:outline-none focus:border-amber-500 bg-amber-50/30"
+            required
+          >
+        </div>
+
+        <div>
+          <label for="notes" class="block text-lg text-amber-800 mb-2">
+            A few words...
+          </label>
+          <textarea
+            id="notes"
+            name="notes"
+            rows="4"
+            placeholder="What does this day feel like?"
+            class="w-full px-4 py-3 border-2 border-amber-300 rounded-lg focus:outline-none focus:border-amber-500 bg-amber-50/30 resize-none"
+          ><%= @today_entry ? @today_entry['notes'] : '' %></textarea>
+        </div>
+
+        <button
+          type="submit"
+          class="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
         >
-      </div>
-
-      <div>
-        <label for="notes" class="block text-lg text-amber-800 mb-2">
-          A few words...
-        </label>
-        <textarea
-          id="notes"
-          name="notes"
-          rows="4"
-          placeholder="What does this day feel like?"
-          class="w-full px-4 py-3 border-2 border-amber-300 rounded-lg focus:outline-none focus:border-amber-500 bg-amber-50/30 resize-none"
-        ><%= @today_entry ? @today_entry['notes'] : '' %></textarea>
-      </div>
-
-      <button
-        type="submit"
-        class="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
-      >
-        <%= @today_entry ? 'Update Today' : 'Save Today' %>
-      </button>
-    </form>
-  </div>
+          <%= @today_entry ? 'Update Today' : 'Save Today' %>
+        </button>
+      </form>
+    </div>
+  <% end %>
 
 
   <!-- Recent Days -->
