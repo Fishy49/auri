@@ -8,7 +8,7 @@ Type=simple
 User=rick
 Group=rick
 WorkingDirectory=/home/rick/apps/auri
-ExecStart=/usr/bin/fish -ic "ruby app.rb -p 7654"
+ExecStart=/usr/bin/fish -ic "ruby app.rb -p 7654 -o 0.0.0.0"
 Restart=always
 RestartSec=1
 
