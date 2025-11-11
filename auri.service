@@ -1,0 +1,16 @@
+[Unit]
+Description=Auri Puma Service
+After=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=rick
+Group=rick
+WorkingDirectory=/home/rick/apps/auri
+ExecStart=/usr/bin/fish -ic "ruby app.rb -p 7654"
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target
