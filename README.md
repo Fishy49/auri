@@ -2,7 +2,7 @@
 
 A minimalist micro-journal inspired by Auri from Patrick Rothfuss's "The Slow Regard of Silent Things". Record what kind of day today is in a word or two, with a few notes about how it feels.
 
-<p align="center"><img width="889" height="845" alt="image" src="https://github.com/user-attachments/assets/28d66ccd-4f08-421f-bc21-8447ca943dd6" /></p>
+<p align="center"><img width="805" height="838" alt="image" src="https://github.com/user-attachments/assets/7061e788-dbc1-419c-8fd2-1c2176c5d24e" /></p>
 
 
 ## What It Does
