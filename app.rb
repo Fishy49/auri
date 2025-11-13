@@ -155,14 +155,14 @@ __END__
 
         <div>
           <label for="day_type" class="block text-lg text-amber-800 mb-2">
-            This is a <span class="italic">day of...</span>
+            Today is a <span class="italic">day for...</span>
           </label>
           <input
             type="text"
             id="day_type"
             name="day_type"
             value="<%= @today_entry ? @today_entry['day_type'] : '' %>"
-            placeholder="Mending, Making, Exploring..."
+            placeholder="Mending, Finding, Exploring..."
             class="w-full px-4 py-3 text-xl italic border-2 border-amber-300 rounded-lg focus:outline-none focus:border-amber-500 bg-amber-50/30"
             required
           >
@@ -176,7 +176,7 @@ __END__
             id="notes"
             name="notes"
             rows="4"
-            placeholder="What does this day feel like?"
+            placeholder="Describe today. Is it a white day? A deep day? A finding day?"
             class="w-full px-4 py-3 border-2 border-amber-300 rounded-lg focus:outline-none focus:border-amber-500 bg-amber-50/30 resize-none"
           ><%= @today_entry ? @today_entry['notes'] : '' %></textarea>
         </div>
@@ -253,6 +253,6 @@ __END__
   <% end %>
 
   <div class="text-center text-amber-600 text-sm mt-12 italic">
-    <p>"Everything has a place where it belongs."</p>
+    <p>"Nothing is anything it shouldn’t be."</p>
   </div>
 </div>
