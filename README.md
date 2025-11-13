@@ -143,6 +143,6 @@ The app uses Tailwind CSS via CDN for styling. Colors and fonts can be easily cu
 
 ## Philosophy
 
-Like Auri herself, this app believes in simplicity and finding the right place for things. Each day has its own nature - some are for mending, some for making, some for exploring. By naming our days, we honor their unique character.
+Like Auri herself, this app believes in simplicity and finding the right place for things. Each day has its own nature and putting a name to it can help you navigate the ups and downs.
 
-"Everything has a place where it belongs."
+"Nothing is anything it shouldn’t be.""
