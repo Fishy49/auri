@@ -126,7 +126,7 @@ __END__
 
       <div class="mb-6">
         <div class="text-amber-700 text-lg mb-2">
-          This is a <span class="italic">day of...</span>
+          Today is a <span class="italic">day for...</span>
         </div>
         <div class="text-4xl day-type text-amber-900 font-semibold">
           <%= @today_entry['day_type'] %>
