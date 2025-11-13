@@ -145,4 +145,4 @@ The app uses Tailwind CSS via CDN for styling. Colors and fonts can be easily cu
 
 Like Auri herself, this app believes in simplicity and finding the right place for things. Each day has its own nature and putting a name to it can help you navigate the ups and downs.
 
-"Nothing is anything it shouldn’t be.""
+> "Nothing was anything it shouldn’t be."
