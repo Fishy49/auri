@@ -56,7 +56,7 @@ end
 
 get '/all' do
   @page = (params[:page] || 1).to_i
-  @per_page = 30
+  @per_page = 7
   @offset = (@page - 1) * @per_page
 
   @recent_days = db.execute("SELECT * FROM days ORDER BY date DESC LIMIT ? OFFSET ?", [@per_page, @offset])
