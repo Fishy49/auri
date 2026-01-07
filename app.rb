@@ -96,6 +96,38 @@ delete '/day/:id' do
   redirect '/'
 end
 
+get '/export' do
+  entries = db.execute("SELECT date, day_type, notes FROM days ORDER BY date ASC")
+  content_type 'application/json'
+  attachment "auri-export-#{Date.today}.json"
+  JSON.pretty_generate(entries)
+end
+
+post '/import' do
+  if params[:file] && params[:file][:tempfile]
+    begin
+      json_data = JSON.parse(params[:file][:tempfile].read)
+
+      # Wipe out all existing entries
+      db.execute("DELETE FROM days")
+
+      # Import new entries
+      json_data.each do |entry|
+        db.execute(
+          "INSERT INTO days (date, day_type, notes) VALUES (?, ?, ?)",
+          [entry['date'], entry['day_type'], entry['notes']]
+        )
+      end
+
+      redirect '/'
+    rescue JSON::ParserError
+      halt 400, "Invalid JSON file"
+    end
+  else
+    halt 400, "No file provided"
+  end
+end
+
 __END__
 
 @@layout
@@ -357,6 +389,46 @@ __END__
     </details>
   </div>
   <% end %>
+
+  <!-- Export/Import -->
+  <div class="mt-8 mb-8">
+    <details class="bg-white rounded-lg shadow-sm border border-amber-100">
+      <summary class="p-4 hover:bg-amber-50/50 transition-colors rounded-lg flex items-center justify-between">
+        <span class="text-amber-700 text-sm italic">Backup & Restore...</span>
+        <span class="text-amber-400 text-xs">▾</span>
+      </summary>
+      <div class="px-4 pb-4 pt-2 space-y-4">
+        <div>
+          <a href="/export" class="inline-block w-full text-center bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">
+            Export All Entries (JSON)
+          </a>
+        </div>
+        <div class="border-t border-amber-100 pt-4">
+          <form method="POST" action="/import" enctype="multipart/form-data" class="space-y-3">
+            <div>
+              <label class="block text-sm text-amber-800 mb-2">
+                Import Entries (Warning: This will replace all existing entries!)
+              </label>
+              <input
+                type="file"
+                name="file"
+                accept=".json"
+                required
+                class="w-full text-sm text-amber-900 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-amber-100 file:text-amber-700 hover:file:bg-amber-200"
+              >
+            </div>
+            <button
+              type="submit"
+              onclick="return confirm('This will DELETE all existing entries and replace them with the imported data. Are you sure?')"
+              class="w-full bg-amber-800 hover:bg-amber-900 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+            >
+              Import & Replace All
+            </button>
+          </form>
+        </div>
+      </div>
+    </details>
+  </div>
 
   <div class="text-center text-amber-600 text-sm mt-12 italic">
     <p>"Nothing is anything it shouldn't be."</p>
