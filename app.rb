@@ -26,12 +26,42 @@ db.execute "CREATE INDEX IF NOT EXISTS idx_days_date ON days(date);"
 
 # Routes
 get '/' do
-  @today = Date.today.to_s
-  @today_entry = db.execute("SELECT * FROM days WHERE date = ? ORDER BY id DESC LIMIT 1", [@today]).first
-  @recent_days = db.execute("SELECT * FROM days ORDER BY date DESC LIMIT 30")
-  @day_type_stats = db.execute("SELECT day_type, COUNT(*) as count FROM days GROUP BY day_type ORDER BY count DESC LIMIT 10")
+  # Get date from params or default to today
+  @current_date = params[:date] ? Date.parse(params[:date]) : Date.today
+  @current_date_str = @current_date.to_s
+
+  # Find previous entry date (most recent date before current date that has an entry)
+  prev_entry = db.execute("SELECT date FROM days WHERE date < ? ORDER BY date DESC LIMIT 1", [@current_date_str]).first
+  @prev_date = prev_entry ? prev_entry['date'] : nil
+
+  # Find next entry date (earliest date after current date that has an entry)
+  # OR if no next entry exists and current date is before today, use today
+  next_entry = db.execute("SELECT date FROM days WHERE date > ? ORDER BY date ASC LIMIT 1", [@current_date_str]).first
+  if next_entry
+    @next_date = next_entry['date']
+  elsif @current_date < Date.today
+    @next_date = Date.today.to_s
+  else
+    @next_date = nil
+  end
+
+  # Get entry for current date
+  @current_entry = db.execute("SELECT * FROM days WHERE date = ? ORDER BY id DESC LIMIT 1", [@current_date_str]).first
   @edit_mode = params[:edit] == 'true'
   erb :index
+end
+
+get '/all' do
+  @page = (params[:page] || 1).to_i
+  @per_page = 30
+  @offset = (@page - 1) * @per_page
+
+  @recent_days = db.execute("SELECT * FROM days ORDER BY date DESC LIMIT ? OFFSET ?", [@per_page, @offset])
+  @total_entries = db.execute("SELECT COUNT(*) as count FROM days").first['count']
+  @total_pages = (@total_entries.to_f / @per_page).ceil
+  @day_type_stats = db.execute("SELECT day_type, COUNT(*) as count FROM days GROUP BY day_type ORDER BY count DESC LIMIT 10")
+
+  erb :all
 end
 
 post '/day' do
@@ -58,7 +88,7 @@ post '/day' do
     end
   end
 
-  redirect '/'
+  redirect "/?date=#{date}"
 end
 
 delete '/day/:id' do
@@ -106,37 +136,57 @@ __END__
 @@index
 <div class="container mx-auto px-4 py-8 max-w-3xl">
   <!-- Header -->
-  <div class="text-center mb-12">
-    <h1 class="text-5xl font-semibold text-amber-900 mb-2">Auri</h1>
+  <div class="text-center mb-8">
+    <h1 class="text-5xl font-semibold text-amber-900 mb-2">
+      <a href="/" class="hover:text-amber-700 transition-colors">Auri</a>
+    </h1>
     <p class="text-lg text-amber-700 italic">What kind of day is today?</p>
   </div>
 
-  <!-- Today's Entry -->
-  <% if @today_entry && !@edit_mode %>
+  <!-- Date Navigation -->
+  <div class="flex items-center justify-between mb-6">
+    <% if @prev_date %>
+      <a href="/?date=<%= @prev_date %>" class="text-3xl text-amber-600 hover:text-amber-700 transition-colors px-4 py-2">
+        ←
+      </a>
+    <% else %>
+      <span class="text-3xl text-amber-300 px-4 py-2">←</span>
+    <% end %>
+    <div class="text-lg font-semibold text-amber-900">
+      <%= @current_date.strftime('%B %d, %Y') %>
+    </div>
+    <% if @next_date %>
+      <a href="/?date=<%= @next_date %>" class="text-3xl text-amber-600 hover:text-amber-700 transition-colors px-4 py-2">
+        →
+      </a>
+    <% else %>
+      <span class="text-3xl text-amber-300 px-4 py-2">→</span>
+    <% end %>
+  </div>
+
+  <!-- Current Date's Entry -->
+  <% if @current_entry && !@edit_mode %>
     <!-- Display Card -->
     <div class="bg-white rounded-lg shadow-md p-8 mb-8 border border-amber-200">
-      <div class="flex justify-between items-start mb-6">
-        <div class="text-sm font-semibold text-amber-900">
-          Today is <%= Date.today.strftime('%B %d, %Y') %>
-        </div>
-        <a href="/?edit=true" class="text-amber-600 hover:text-amber-700 text-sm font-semibold transition-colors">
+      <div class="flex justify-end items-start mb-6">
+        <a href="/?date=<%= @current_date_str %>&edit=true" class="text-amber-600 hover:text-amber-700 text-sm font-semibold transition-colors">
           Edit
         </a>
       </div>
 
       <div class="mb-6">
         <div class="text-amber-700 text-lg mb-2">
-          <span class="italic">Today is a day for...</span>
+          <span class="italic"><%= @current_date == Date.today ? 'Today' : 'This' %> is a day for...</span>
         </div>
         <div class="text-4xl day-type text-amber-900 font-semibold">
-          <%= @today_entry['day_type'] %>
+          <%= @current_entry['day_type'] %>
         </div>
       </div>
 
-      <% if @today_entry['notes'] && !@today_entry['notes'].empty? %>
+      <% if @current_entry['notes'] && !@current_entry['notes'].empty? %>
       <div class="border-t border-amber-100 pt-6">
         <div class="text-amber-800 leading-relaxed">
-          <%= @today_entry['notes'] %>
+          <%= @current_entry['notes'] %>
         </div>
       </div>
       <% end %>
@@ -145,23 +195,17 @@ __END__
     <!-- Entry Form -->
     <div class="bg-white rounded-lg shadow-md p-8 mb-8 border border-amber-200">
       <form method="POST" action="/day" class="space-y-6">
-        <input type="hidden" name="date" value="<%= @today %>">
-
-        <div>
-          <label class="block text-sm font-semibold text-amber-900 mb-2">
-            Today is <%= Date.today.strftime('%B %d, %Y') %>
-          </label>
-        </div>
+        <input type="hidden" name="date" value="<%= @current_date_str %>">
 
         <div>
           <label for="day_type" class="block text-lg text-amber-800 mb-2">
-            Today is a <span class="italic">day for...</span>
+            <%= @current_date == Date.today ? 'Today' : 'This' %> is a <span class="italic">day for...</span>
           </label>
           <input
             type="text"
             id="day_type"
             name="day_type"
-            value="<%= @today_entry ? @today_entry['day_type'] : '' %>"
+            value="<%= @current_entry ? @current_entry['day_type'] : '' %>"
             placeholder="Mending, Finding, Exploring..."
             class="w-full px-4 py-3 text-xl italic border-2 border-amber-300 rounded-lg focus:outline-none focus:border-amber-500 bg-amber-50/30"
             required
@@ -176,26 +220,54 @@ __END__
             id="notes"
             name="notes"
             rows="4"
-            placeholder="Describe today. Is it a white day? A deep day? A finding day?"
+            placeholder="Describe this day. Is it a white day? A deep day? A finding day?"
             class="w-full px-4 py-3 border-2 border-amber-300 rounded-lg focus:outline-none focus:border-amber-500 bg-amber-50/30 resize-none"
-          ><%= @today_entry ? @today_entry['notes'] : '' %></textarea>
+          ><%= @current_entry ? @current_entry['notes'] : '' %></textarea>
         </div>
 
         <button
           type="submit"
           class="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
         >
-          <%= @today_entry ? 'Update Today' : 'Save Today' %>
+          <%= @current_entry ? 'Update Day' : 'Save Day' %>
         </button>
       </form>
     </div>
   <% end %>
 
+  <!-- Link to All Entries -->
+  <div class="text-center mt-8">
+    <a href="/all" class="inline-block text-amber-600 hover:text-amber-700 font-semibold transition-colors border-b-2 border-amber-300 hover:border-amber-400 pb-1">
+      View All Days
+    </a>
+  </div>
 
-  <!-- Recent Days -->
+  <div class="text-center text-amber-600 text-sm mt-12 italic">
+    <p>"Nothing is anything it shouldn't be."</p>
+  </div>
+</div>
+
+@@all
+<div class="container mx-auto px-4 py-8 max-w-3xl">
+  <!-- Header -->
+  <div class="text-center mb-8">
+    <h1 class="text-5xl font-semibold text-amber-900 mb-2">
+      <a href="/" class="hover:text-amber-700 transition-colors">Auri</a>
+    </h1>
+    <p class="text-lg text-amber-700 italic">All your days</p>
+  </div>
+
+  <!-- Back to Today Link -->
+  <div class="text-center mb-8">
+    <a href="/" class="inline-block text-amber-600 hover:text-amber-700 font-semibold transition-colors border-b-2 border-amber-300 hover:border-amber-400 pb-1">
+      ← Back to Today
+    </a>
+  </div>
+
+  <!-- All Days -->
   <% if @recent_days && @recent_days.any? %>
   <div class="mb-8">
-    <h2 class="text-2xl font-semibold text-amber-900 mb-4">Recent Days</h2>
+    <h2 class="text-2xl font-semibold text-amber-900 mb-4">Your Days</h2>
     <div class="space-y-3">
       <% @recent_days.each do |day| %>
       <div class="bg-white rounded-lg shadow-sm p-5 border border-amber-100 hover:border-amber-300 transition-colors">
@@ -208,16 +280,21 @@ __END__
               <%= day['day_type'] %>
             </div>
           </div>
-          <form method="POST" action="/day/<%= day['id'] %>" class="inline">
-            <input type="hidden" name="_method" value="DELETE">
-            <button
-              type="submit"
-              onclick="return confirm('Delete this day?')"
-              class="text-amber-400 hover:text-amber-600 transition-colors text-sm"
-            >
-              ✕
-            </button>
-          </form>
+          <div class="flex gap-2">
+            <a href="/?date=<%= day['date'] %>&edit=true" class="text-amber-600 hover:text-amber-700 transition-colors text-sm">
+              Edit
+            </a>
+            <form method="POST" action="/day/<%= day['id'] %>" class="inline">
+              <input type="hidden" name="_method" value="DELETE">
+              <button
+                type="submit"
+                onclick="return confirm('Delete this day?')"
+                class="text-amber-400 hover:text-amber-600 transition-colors text-sm"
+              >
+                ✕
+              </button>
+            </form>
+          </div>
         </div>
         <% if day['notes'] && !day['notes'].empty? %>
         <p class="text-amber-800 text-sm leading-relaxed mt-2 pl-0">
@@ -228,11 +305,40 @@ __END__
       <% end %>
     </div>
   </div>
+
+  <!-- Pagination -->
+  <% if @total_pages > 1 %>
+  <div class="flex justify-center items-center gap-4 mt-8">
+    <% if @page > 1 %>
+      <a href="/all?page=<%= @page - 1 %>" class="text-amber-600 hover:text-amber-700 font-semibold transition-colors">
+        ← Previous
+      </a>
+    <% else %>
+      <span class="text-amber-300">← Previous</span>
+    <% end %>
+
+    <span class="text-amber-700">
+      Page <%= @page %> of <%= @total_pages %>
+    </span>
+
+    <% if @page < @total_pages %>
+      <a href="/all?page=<%= @page + 1 %>" class="text-amber-600 hover:text-amber-700 font-semibold transition-colors">
+        Next →
+      </a>
+    <% else %>
+      <span class="text-amber-300">Next →</span>
+    <% end %>
+  </div>
+  <% end %>
+  <% else %>
+  <div class="text-center text-amber-700 italic">
+    <p>No days recorded yet.</p>
+  </div>
   <% end %>
 
   <!-- Patterns (Collapsible Stats) -->
   <% if @day_type_stats && @day_type_stats.any? %>
-  <div class="mb-8">
+  <div class="mt-8 mb-8">
     <details class="bg-white rounded-lg shadow-sm border border-amber-100">
       <summary class="p-4 hover:bg-amber-50/50 transition-colors rounded-lg flex items-center justify-between">
         <span class="text-amber-700 text-sm italic">Patterns in your days...</span>
@@ -253,6 +359,6 @@ __END__
   <% end %>
 
   <div class="text-center text-amber-600 text-sm mt-12 italic">
-    <p>"Nothing is anything it shouldn’t be."</p>
+    <p>"Nothing is anything it shouldn't be."</p>
   </div>
 </div>
