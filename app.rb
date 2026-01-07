@@ -3,6 +3,9 @@ require 'sqlite3'
 require 'json'
 require 'date'
 
+# Set timezone to America/Chicago
+ENV['TZ'] = 'America/Chicago'
+
 # Database setup
 def db
   @db ||= SQLite3::Database.new('auri.db')
